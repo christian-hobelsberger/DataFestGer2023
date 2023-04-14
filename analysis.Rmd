@@ -14,3 +14,16 @@ library(tidyverse)
 
 ```
 
+```{r Chris analysis}
+personen <- read_delim(file = "data/protected_data/personen.csv", col_names = TRUE)
+head(personen)
+
+anteile <- personen %>% 
+  group_by(geschlecht) %>% 
+  summarize(n = n()) %>% 
+  mutate(anteil = n / sum(n))
+
+ggplot(anteile, aes(x = geschlecht, y = anteil)) +
+  geom_bar(stat = "identity")
+```
+
