@@ -85,7 +85,7 @@ firmen <- firmen %>%
       branche_code < 99 ~ "T",
       branche_code == 99 ~ "U"
     ),
-    branche_name = lapply(branche_code, function(x) branche_name[x]),
+    branche_name = vapply(branche_code, function(x) branche_name[x], character(1)),
     mitarbeiter_year = stringr::str_extract(mitarbeiter_staffel, "\\d{4}"),
     mitarbeiter_range = stringr::str_extract(mitarbeiter_staffel, "\\d+-\\d+"),
     umsatz_year = stringr::str_extract(umsatz_staffel, "\\d{4}"),
@@ -95,25 +95,29 @@ firmen <- firmen %>%
 person_firma <- relation_person_firma %>%
   inner_join(firmen %>% rename(firmen_ort = ort), by = "firm_id") %>%
   inner_join(person %>% rename(person_ort = ort), by = "pers_id") %>%
-  filter(funktion %in% c(
+  left_join(plz_einwohner, by = "plz") %>%
+  filter(
+    geschlecht %in% c("m", "f"),
+    funktion %in% c(
     "Vorstandsvorsitzender", "Vorstand", "Direktor",
     "Geschaeftsfuehrer", "Gruender", "Inhaber", "Kommanditist",
     "Partner"
   ))
 
-person_firma <- person_firma %>%
+firma_score <- person_firma %>%
   mutate(alter = 2023 - jahr) %>%
-  filter(alter >= 0, alter <= 100) %>%
+  filter(between(alter, 0, 100)) %>%
   group_by(firm_id, pers_id) %>%
   slice(1) %>%
   ungroup() %>%
+  group_by(firm_id) %>% 
   mutate(
     diversity_alter = min(c(max(alter) - min(alter)) / 50, 1),
     diversity_geschlecht = 1 - 2 * abs(0.5 - mean(geschlecht == "m")),
-    diversity_score = diversity_alter + diversity_geschlecht
+    diversity_score = (diversity_alter + diversity_geschlecht) / 2
   ) %>%
   arrange(diversity_score) %>%
   filter(mitarbeiter_range %in% c("51-500", "501-5000", "5001-50000")) %>%
   group_by(firm_id) %>%
-  filter(n() >= 2) %>% 
+  filter(n() >= 2) %>%
   ungroup()
