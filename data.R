@@ -117,7 +117,6 @@ firma_score <- person_firma %>%
     diversity_score = (diversity_alter + diversity_geschlecht) / 2
   ) %>%
   arrange(diversity_score) %>%
-  filter(mitarbeiter_range %in% c("51-500", "501-5000", "5001-50000")) %>%
-  group_by(firm_id) %>%
   filter(n() >= 2) %>%
+  slice(1) %>%
   ungroup()
