@@ -17,9 +17,11 @@ library(lubridate)
 
 ```{r Chris analysis}
 personen <- read_delim(file = "data/protected_data/personen.csv", col_names = TRUE)
+personen_hist <- read_delim(file = "data/protected_data/personen_hist.csv", col_names = TRUE)
 firmen <- read_delim(file = "data/protected_data/firmen.csv", col_names = TRUE)
 firmen_hist <- read_delim(file = "data/protected_data/firmen_hist.csv", col_names = TRUE)
 relationen_person_firma <- read_delim(file = "data/protected_data/relationen_person_firma.csv", col_names = TRUE)
+relationen_person_firma_hist <- read_delim(file = "data/protected_data/relationen_person_firma_hist.csv", col_names = TRUE)
 relationen_firma_firma <- read_delim(file = "data/protected_data/relationen_firma_firma.csv", col_names = TRUE)
 head(personen)
 head(relationen_person_firma)
@@ -83,6 +85,76 @@ ggplot(data = firmenname_laenge_zeit, mapping = aes(x = registrations_year, avg_
   geom_line()
 
 # Geschlechter-Anteile nach Gründungsjahr
+anteile <- personen %>% 
+  group_by(geschlecht) %>% 
+  summarize(n_ges = n()) %>% 
+  mutate(anteil_ges = n / sum(n_ges))
 
+ggplot(anteile, aes(x = geschlecht, y = anteil_ges)) +
+  geom_bar(stat = "identity")
+```
+
+# Diversity analysis
+```{r diversity analysis}
+# female representation in boards over time
+relationen_person_firma_hist_vorstand <- relationen_person_firma_hist %>%
+  filter(funktion %in% c("Vorstandsvorsitzender", "Vorstand"))
+
+relationen_vorstand <- merge(x = personen, 
+                                   y = relationen_person_firma_hist_vorstand, 
+                                   by = "pers_id", 
+                                   all.x = FALSE, 
+                                   all.y = TRUE) %>%
+  filter(geschlecht %in% c("m", "f"), beginn_jahr <= 2022)
+
+
+
+# Group data by year and gender, and count the number of occurrences
+df_counts <- relationen_vorstand %>%
+  group_by(beginn_jahr, geschlecht) %>%
+  summarize(count = n())
+
+# Calculate the total count for each year
+df_totals <- df_counts %>%
+  group_by(beginn_jahr) %>%
+  summarize(total = sum(count))
+
+# Calculate the relative frequency of each gender for each year
+df_freq <- df_counts %>%
+  left_join(df_totals, by = "beginn_jahr") %>%
+  mutate(freq = count / total)
+
+# Plot the results
+ggplot(df_freq, aes(x = beginn_jahr, y = freq, color = geschlecht)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = "Year", y = "Relative Frequency", color = "Gender")
+
+
+
+
+
+relationen_vorstand %>% group_by(beginn_jahr, geschlecht) %>%
+  summarize(n_ges = n()) %>% 
+  mutate(anteil_ges = n / sum(n_ges))
+  
+  
+ggplot(data = personen_relationen_hist_vorstand, 
+       mapping = aes(x = beginn_jahr, y = ))
+
+
+setDT(personen_hist)
+setDT(relationen_person_firma_hist)
+
+personen_relationen_hist <- personen_hist[relationen_person_firma_hist, on = "pers_id", allow.cartesian = TRUE]
+
+
+personen_relationen_hist <- merge(x = personen_hist, relationen_person_firma_hist, by = "pers_id")
+personen_relationen_hist %>%
+  group_by(geschlecht, funktion) %>%
+  count(funktion, name = "funktion_abs_haeufigkeiten") %>%
+  filter(funktion %in% c("Geschaeftsfuehrer"))
+
+# average age in boards over time
 ```
 
