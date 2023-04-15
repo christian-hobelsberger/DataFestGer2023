@@ -323,17 +323,43 @@ relationen_fuehrung_adv_stat <- relationen_fuehrung_adv_stat %>%
   group_by(firm_id, pers_id) %>%
   slice(1)
 
-relationen_fuehrung_adv_stat <- relationen_fuehrung_adv_stat %>%
+relationen_fuehrung_adv_stat_div <- relationen_fuehrung_adv_stat %>%
   group_by(firm_id) %>%
   mutate(diversity_alter = min(c(max(alter) - min(alter)) / 50, 1),
-         diversity_geschlecht = 1 - 2 * abs(0.5 - mean(geschlecht == "m")),
-         diversity_score = mean(diversity_alter[1], diversity_geschlecht[1]))
+         diversity_geschlecht = 1 - 2 * abs(0.5 - mean(geschlecht == "m")))
+relationen_fuehrung_adv_stat_div$diversity_score  <-  (relationen_fuehrung_adv_stat_div$diversity_alter + relationen_fuehrung_adv_stat_div$diversity_geschlecht) / 2
+
+firmen_diversität <- relationen_fuehrung_adv_stat_div %>% arrange((diversity_score))  %>% filter(mitarbeiter_range %in% c("51-500", "501-5000", "5001-50000")) %>% 
+  group_by(firm_id) %>%
+  filter(n() >= 2)
 
 # relationen_fuehrung_adv_stat <- relationen_fuehrung_adv_stat %>%
 #   group_by(firm_id) %>%
 #   mutate(diversity_score = mean(min(c(max(alter) - min(alter)) / 50, 1), 1 - 2 * abs(0.5 - mean(geschlecht == "m"))))
 
 
-relationen_fuehrung_adv_stat %>% arrange(desc(diversity_score)) %>% select(firmenname, hr_nummer, diversity_score, mitarbeiter_range) %>% filter(mitarbeiter_range %in% c("501-5000", "5001-50000")) %>% distinct(firmenname, hr_nummer, diversity_score, mitarbeiter_range)
+relationen_fuehrung_adv_stat_div %>% arrange(desc(diversity_score))  %>% filter(mitarbeiter_range %in% c("501-5000", "5001-50000")) %>% select(firmenname, hr_nummer, diversity_alter, diversity_geschlecht, diversity_score, mitarbeiter_range)
+
+relationen_fuehrung_adv_stat_div %>% arrange((diversity_score))  %>% filter(mitarbeiter_range %in% c("51-500", "501-5000", "5001-50000")) %>% 
+  group_by(firm_id) %>%
+  filter(n() >= 5) %>%
+  select(firmenname, hr_nummer, diversity_alter, diversity_geschlecht, diversity_score, mitarbeiter_range)
+
+relationen_fuehrung_adv_stat_div %>% arrange((diversity_score))  %>% filter(mitarbeiter_range %in% c("51-500", "501-5000", "5001-50000")) %>% 
+  group_by(firm_id) %>%
+  filter(n() >= 2) %>%
+  select(firmenname, diversity_score, mitarbeiter_range) %>% distinct()
+
+firmen_diversität <- relationen_fuehrung_adv_stat_div %>% arrange((diversity_score))  %>%
+  group_by(firm_id) %>%
+  filter(n() >= 2) %>% 
+  slice(1)
+
+firmen_diversität %>%
+  group_by(mitarbeiter_range) %>%
+  summarise(mean(diversity_score))
+
+ggplot(data = firmen_diversität, mapping = aes(x = mitarbeiter_range, diversity_score)) +
+  geom_()
 ```
 
