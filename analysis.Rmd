@@ -213,5 +213,6 @@ branchen_codes <- unique(firmen$branchen_code)
 for (branchen_code in branchen_codes) {
   diversity_branche(relationen_vorstand_adv, branchen_code)
 }
+
 ```
 
