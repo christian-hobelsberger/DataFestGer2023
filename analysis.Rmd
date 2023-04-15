@@ -54,6 +54,13 @@ firmen <- firmen %>% mutate(branche = as.numeric(branche)) %>%
                                    branche < 99 ~ "T", 
                                    branche == 99 ~ "U"))
 
+firmen$ma <- strsplit(firmen$mitarbeiter_staffel, ",")
+firmen$ma <- lapply(firmen$ma, tail, n = 1L)
+firmen$ma <- gsub(firmen$ma,  replacement = "", pattern = "\"")
+firmen$year_ma <- strsplit(firmen$ma,  "=>")
+firmen$ma_range <- lapply(firmen$year_ma, tail, n = 1L)
+firmen$year_ma <- lapply(firmen$year_ma, head, n = 1L)
+
 
 
 # Definieren der URL und Parameter für die OpenStreetMap-API
@@ -238,6 +245,15 @@ ggplot(data = relationen_vorstand_adv, aes(y = ende_jahr)) +
 
 #  Analyse Diversität Firma nach PLZ
 ```{r}
-relationen_fuehrung_adv_stat
+relationen_fuehrung_adv_stat <- relationen_fuehrung_adv_stat %>%
+  mutate(alter = 2023 - jahr) %>%
+  filter(alter >= 0, alter <= 100)
+
+relationen_fuehrung_adv_stat <- relationen_fuehrung_adv_stat %>%
+  group_by(firm_id) %>%
+  mutate(diversity_score = mean(min(c(max(alter) - min(alter)) / 50, 1), mean(geschlecht == "m")))
+
+
+relationen_fuehrung_adv_stat %>% arrange(desc(diversity_score)) %>% select(firmenname, hr_nummer, diversity_score, ma_range)
 ```
 
