@@ -54,6 +54,13 @@ firmen <- firmen %>% mutate(branche = as.numeric(branche)) %>%
                                    branche < 99 ~ "T", 
                                    branche == 99 ~ "U"))
 
+firmen$ma <- strsplit(firmen$mitarbeiter_staffel, ",")
+firmen$ma <- lapply(firmen$ma, tail, n = 1L)
+firmen$ma <- gsub(firmen$ma,  replacement = "", pattern = "\"")
+firmen$year_ma <- strsplit(firmen$ma,  "=>")
+firmen$ma_range <- lapply(firmen$year_ma, tail, n = 1L)
+firmen$year_ma <- lapply(firmen$year_ma, head, n = 1L)
+
 
 
 # Definieren der URL und Parameter für die OpenStreetMap-API
@@ -120,6 +127,76 @@ anteile <- personen %>%
 
 ggplot(anteile, aes(x = geschlecht, y = anteil_ges)) +
   geom_bar(stat = "identity")
+```
+
+# Data wrangling
+```{r}
+extract_wz_code <- function(x) {
+  lapply(x, function(code) {
+    stringr::str_extract_all(code, "\\d+") %>%
+      `[[`(1) %>%
+      as.numeric() %>%
+      min() %>%
+      as.character() %>%
+      substr(1, 2)
+  })
+}
+
+branche_name <- c(
+  "A" = "Land- und Forstwirtschaft, Fischerei ",
+  "B" = "Bergbau und Gewinnung von Steinen und Erden",
+  "C" = "Verarbeitendes Gewerbe",
+  "E" = "Energieversorgung",
+  "G" = "Handel; Instandhaltung und Reparatur von Kraftfahrzeugen",
+  "H" = "Verkehr und Lagerei",
+  "I" = "Gastgewerbe",
+  "J" = "Information und Kommunikation",
+  "K" = "Erbringung von Finanz- und Versicherungsdienstleistungen",
+  "L" = "Grundstücks- und Wohnungswesen",
+  "M" = "Erbringung von freiberuflichen, wissenschaftlichen und technischen Dienstleistungen",
+  "N" = "Erbringung von sonstigen wirtschaftlichen Dienstleistungen",
+  "O" = "Öffentliche Verwaltung, Verteidigung; Sozialversicherung",
+  "P" = "Erziehung und Unterricht",
+  "Q" = "Gesundheits- und Sozialwesen",
+  "R" = "Kunst, Unterhaltung und Erholung",
+  "T" = "Private Haushalte mit Hauspersonal; Herstellung von Waren und Erbringung von Dienstleistungen durch Private Haushalte für den Eigenbedarf ohne ausgeprägten Schwerpunkt",
+  "U" = "Exterritoriale Organisationen und Körperschaften"
+)
+
+firmen <- firmen %>%
+  # select(-c(
+  #   "amtsgericht_plz", "amtsgericht_ort", "hr_nummer",
+  #   "hr_nummer_alle", "hr_nummer_info", "gegenstand",
+  #   "pubid_arr", "pdf_id_arr", "wz_code_text"
+  # )) %>%
+  mutate(
+    branche_code = extract_wz_code(wz_code),
+    branche_code = case_when(
+      branche_code < 05 ~ "A",
+      branche_code < 10 ~ "B",
+      branche_code < 35 ~ "C",
+      branche_code < 45 ~ "E",
+      branche_code < 49 ~ "G",
+      branche_code < 55 ~ "H",
+      branche_code < 58 ~ "I",
+      branche_code < 64 ~ "J",
+      branche_code < 68 ~ "K",
+      branche_code < 69 ~ "L",
+      branche_code < 77 ~ "M",
+      branche_code < 84 ~ "N",
+      branche_code < 85 ~ "O",
+      branche_code < 86 ~ "P",
+      branche_code < 90 ~ "Q",
+      branche_code < 97 ~ "R",
+      branche_code < 99 ~ "T",
+      branche_code == 99 ~ "U"
+    ),
+    branche_name = lapply(branche_code, function(x) branche_name[x]),
+    mitarbeiter_year = stringr::str_extract(mitarbeiter_staffel, "\\d{4}"),
+    mitarbeiter_range = stringr::str_extract(mitarbeiter_staffel, "\\d+-\\d+"),
+    umsatz_year = stringr::str_extract(umsatz_staffel, "\\d{4}"),
+    umsatz_range = stringr::str_extract(umsatz_staffel, "\\d+-\\d+")
+)
 ```
 
 # Diversity analysis
@@ -238,6 +315,25 @@ ggplot(data = relationen_vorstand_adv, aes(y = ende_jahr)) +
 
 #  Analyse Diversität Firma nach PLZ
 ```{r}
-relationen_fuehrung_adv_stat
+relationen_fuehrung_adv_stat <- relationen_fuehrung_adv_stat %>%
+  mutate(alter = 2023 - jahr) %>%
+  filter(alter >= 0, alter <= 100)
+
+relationen_fuehrung_adv_stat <- relationen_fuehrung_adv_stat %>%
+  group_by(firm_id, pers_id) %>%
+  slice(1)
+
+relationen_fuehrung_adv_stat <- relationen_fuehrung_adv_stat %>%
+  group_by(firm_id) %>%
+  mutate(diversity_alter = min(c(max(alter) - min(alter)) / 50, 1),
+         diversity_geschlecht = 1 - 2 * abs(0.5 - mean(geschlecht == "m")),
+         diversity_score = mean(diversity_alter[1], diversity_geschlecht[1]))
+
+# relationen_fuehrung_adv_stat <- relationen_fuehrung_adv_stat %>%
+#   group_by(firm_id) %>%
+#   mutate(diversity_score = mean(min(c(max(alter) - min(alter)) / 50, 1), 1 - 2 * abs(0.5 - mean(geschlecht == "m"))))
+
+
+relationen_fuehrung_adv_stat %>% arrange(desc(diversity_score)) %>% select(firmenname, hr_nummer, diversity_score, mitarbeiter_range) %>% filter(mitarbeiter_range %in% c("501-5000", "5001-50000")) %>% distinct(firmenname, hr_nummer, diversity_score, mitarbeiter_range)
 ```
 
