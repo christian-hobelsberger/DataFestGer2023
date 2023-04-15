@@ -6,11 +6,83 @@ date: '2023-04-14'
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(lubridate)
 ```
 
 
 ## First exploratory data 
 ```{r}
+
+```
+
+```{r Chris analysis}
+personen <- read_delim(file = "data/protected_data/personen.csv", col_names = TRUE)
+firmen <- read_delim(file = "data/protected_data/firmen.csv", col_names = TRUE)
+firmen_hist <- read_delim(file = "data/protected_data/firmen_hist.csv", col_names = TRUE)
+relationen_person_firma <- read_delim(file = "data/protected_data/relationen_person_firma.csv", col_names = TRUE)
+relationen_firma_firma <- read_delim(file = "data/protected_data/relationen_firma_firma.csv", col_names = TRUE)
+head(personen)
+head(relationen_person_firma)
+
+# Adjust data types
+
+# Definieren der URL und Parameter für die OpenStreetMap-API
+url <- "https://nominatim.openstreetmap.org/search"
+params <- list(q = "AGS-27-Code", format = "json", limit = 1)
+
+get_coordinates <- function(land, plz, ort, stn_hnr) {
+  url <- paste0("https://nominatim.openstreetmap.org/search?country=", land, "&postalcode=", plz, "&city=", ort, "&street=", stn_hnr, "&format=json&limit=1")
+  response <- GET(url)
+  if (response$status_code == 200) {
+    json <- content(response, "text")
+    data <- fromJSON(json)
+    if (length(data) > 0) {
+      lat <- as.numeric(data[[1]]$lat)
+      lon <- as.numeric(data[[1]]$lon)
+      return(c(lat, lon))
+    } else {
+      warning(paste0("No results found for address ", stn_hnr, ", ", plz, " ", ort, ", ", land))
+    }
+  } else {
+    warning(paste0("API request failed for address ", stn_hnr, ", ", plz, " ", ort, ", ", land))
+  }
+  return(NA)
+}
+
+# Anwenden der Funktion auf die Spalten
+firmen$coords <- apply(firmen[1], 1, function(x) get_coordinates(x["land"], x["plz"], x["ort"], x["stn_hnr"]))
+
+
+
+anteile <- personen %>% 
+  group_by(geschlecht) %>% 
+  summarize(n_ges = n()) %>% 
+  mutate(anteil_ges = n / sum(n_ges))
+
+ggplot(anteile, aes(x = geschlecht, y = anteil_ges)) +
+  geom_bar(stat = "identity")
+
+personen_relationen <- merge(x = personen, relationen_person_firma, by = "pers_id")
+personen_relationen %>%
+  group_by(geschlecht, funktion) %>%
+  count(funktion, name = "funktion_abs_haeufigkeiten") %>%
+  filter(funktion %in% c("Geschaeftsfuehrer"))
+
+firmen_relationen <- merge(firmen, relationen_person_firma, by = "firm_id")
+firmen_relationen %>% group_by(firm_id, pers_id, funktion) %>%
+  filter(funktion %>% c("Geschaeftsfuehrer")) %>%
+  count(pers_id) %>%
+  summarize(avg_employees = mean(number_of_employees, na.rm = TRUE))
+
+firmenname_laenge_zeit <- firmen_hist %>%
+  mutate(registrations_year = year(registrations_datum)) %>%
+  group_by(registrations_year) %>%
+  summarize(avg_nchar = mean(nchar(unique(firmenname)), na.rm = TRUE))
+
+ggplot(data = firmenname_laenge_zeit, mapping = aes(x = registrations_year, avg_nchar)) +
+  geom_line()
+
+# Geschlechter-Anteile nach Gründungsjahr
 
 ```
 
