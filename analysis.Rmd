@@ -125,18 +125,20 @@ ggplot(anteile, aes(x = geschlecht, y = anteil_ges)) +
 # Diversity analysis
 ```{r diversity analysis}
 # female representation in boards over time
-relationen_person_firma_hist_vorstand <- relationen_person_firma_hist %>%
-  filter(funktion %in% c("Vorstandsvorsitzender", "Vorstand"))
+relationen_person_firma_hist_fuehrung <- relationen_person_firma_hist %>%
+  filter(funktion %in% c("Vorstandsvorsitzender", "Vorstand", "Direktor",
+                         "Geschaeftsfuehrer", "Gruender", "Inhaber", "Kommanditist",
+                         "Partner"))
 
-relationen_vorstand <- merge(x = personen, 
-                                   y = relationen_person_firma_hist_vorstand, 
+relationen_fuehrung <- merge(x = personen, 
+                                   y = relationen_person_firma_hist_fuehrung, 
                                    by = "pers_id", 
                                    all.x = FALSE, 
                                    all.y = TRUE) %>%
   filter(geschlecht %in% c("m", "f"), beginn_jahr <= 2022)
 
-relationen_vorstand_adv <- merge(x = firmen, 
-                                   y = relationen_vorstand, 
+relationen_fuehrung_adv <- merge(x = firmen, 
+                                   y = relationen_fuehrung, 
                                    by = "firm_id", 
                                    all.x = FALSE, 
                                    all.y = TRUE)
@@ -200,7 +202,7 @@ diversity_branche <- function(df, branche) {
 # Create Branchen Plots
 branchen_codes <- unique(firmen$branchen_code)
 for (branchen_code in branchen_codes) {
-  diversity_branche(relationen_vorstand_adv, branchen_code)
-}apply(array, margin, ...)
+  diversity_branche(relationen_fuehrung_adv, branchen_code)
+}
 ```
 
