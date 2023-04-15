@@ -371,7 +371,11 @@ firmen_diversität %>%
   summarise(mean_diversity_score = mean(diversity_score)) %>%
   arrange((mean_diversity_score)) %>% view()
 
-ggplot(data = firmen_diversität, mapping = aes(x = mitarbeiter_range, diversity_score)) +
+ggplot(data = person_firma, mapping = aes(x = mitarbeiter_range, diversity_score)) +
   geom_()
+
+branche_diversität <- firmen_diversität %>%
+  group_by(branchen_code) %>%
+  summarise(avg_diversity_score = mean(diversity_score)) 
 ```
 
