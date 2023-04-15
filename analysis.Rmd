@@ -9,7 +9,6 @@ library(tidyverse)
 library(lubridate)
 ```
 
-
 ## First exploratory data 
 ```{r}
 
@@ -17,14 +16,45 @@ library(lubridate)
 
 ```{r Chris analysis}
 personen <- read_delim(file = "data/protected_data/personen.csv", col_names = TRUE)
+personen_hist <- read_delim(file = "data/protected_data/personen_hist.csv", col_names = TRUE)
 firmen <- read_delim(file = "data/protected_data/firmen.csv", col_names = TRUE)
 firmen_hist <- read_delim(file = "data/protected_data/firmen_hist.csv", col_names = TRUE)
 relationen_person_firma <- read_delim(file = "data/protected_data/relationen_person_firma.csv", col_names = TRUE)
+relationen_person_firma_hist <- read_delim(file = "data/protected_data/relationen_person_firma_hist.csv", col_names = TRUE)
 relationen_firma_firma <- read_delim(file = "data/protected_data/relationen_firma_firma.csv", col_names = TRUE)
 head(personen)
 head(relationen_person_firma)
 
 # Adjust data types
+
+
+# Adjust "branche"
+firmen$branche <- gsub(firmen$wz_code, replacement = "", pattern = "\\{|\\}")
+firmen$branche <- strsplit(firmen$branche, ",")
+firmen$branche <- lapply(firmen$branche, as.numeric)
+firmen$branche <- lapply(firmen$branche, min)
+firmen$branche <- substr(firmen$branche,1,2)
+firmen <- firmen %>% mutate(branche = as.numeric(branche)) %>% 
+  mutate(branchen_code = case_when(branche < 05 ~ "A", 
+                                   branche < 10 ~ "B", 
+                                   branche < 35 ~ "C", 
+                                   branche < 45 ~ "E", 
+                                   branche < 49 ~ "G", 
+                                   branche < 55 ~ "H", 
+                                   branche < 58 ~ "I", 
+                                   branche < 64 ~ "J",
+                                   branche < 68 ~ "K", 
+                                   branche < 69 ~ "L", 
+                                   branche < 77 ~ "M", 
+                                   branche < 84 ~ "N", 
+                                   branche < 85 ~ "O", 
+                                   branche < 86 ~ "P", 
+                                   branche < 90 ~ "Q", 
+                                   branche < 97 ~ "R", 
+                                   branche < 99 ~ "T", 
+                                   branche == 99 ~ "U"))
+
+
 
 # Definieren der URL und Parameter für die OpenStreetMap-API
 url <- "https://nominatim.openstreetmap.org/search"
@@ -83,6 +113,105 @@ ggplot(data = firmenname_laenge_zeit, mapping = aes(x = registrations_year, avg_
   geom_line()
 
 # Geschlechter-Anteile nach Gründungsjahr
+anteile <- personen %>% 
+  group_by(geschlecht) %>% 
+  summarize(n_ges = n()) %>% 
+  mutate(anteil_ges = n / sum(n_ges))
 
+ggplot(anteile, aes(x = geschlecht, y = anteil_ges)) +
+  geom_bar(stat = "identity")
+```
+
+# Diversity analysis
+```{r diversity analysis}
+# female representation in boards over time
+relationen_person_firma_hist_vorstand <- relationen_person_firma_hist %>%
+  filter(funktion %in% c("Vorstandsvorsitzender", "Vorstand"))
+
+relationen_vorstand <- merge(x = personen, 
+                                   y = relationen_person_firma_hist_vorstand, 
+                                   by = "pers_id", 
+                                   all.x = FALSE, 
+                                   all.y = TRUE) %>%
+  filter(geschlecht %in% c("m", "f"), beginn_jahr <= 2022)
+
+
+# Group data by year and gender, and count the number of occurrences
+df_counts <- relationen_vorstand %>%
+  group_by(beginn_jahr, geschlecht) %>%
+  summarize(count = n())
+
+# Calculate the total count for each year
+df_totals <- df_counts %>%
+  group_by(beginn_jahr) %>%
+  summarize(total = sum(count))
+
+# Calculate the relative frequency of each gender for each year
+df_freq <- df_counts %>%
+  left_join(df_totals, by = "beginn_jahr") %>%
+  mutate(freq = count / total)
+
+# Plot the results
+ggplot(df_freq, aes(x = beginn_jahr, y = freq, color = geschlecht)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = "Year", y = "Relative Frequency", color = "Gender")
+
+
+
+
+
+relationen_vorstand %>% group_by(beginn_jahr, geschlecht) %>%
+  summarize(n_ges = n()) %>% 
+  mutate(anteil_ges = n / sum(n_ges))
+  
+  
+ggplot(data = personen_relationen_hist_vorstand, 
+       mapping = aes(x = beginn_jahr, y = ))
+
+
+relationen_vorstand_adv <- merge(x = firmen, 
+                                   y = relationen_vorstand, 
+                                   by = "firm_id", 
+                                   all.x = FALSE, 
+                                   all.y = TRUE)
+
+# average age in boards over time
+```
+
+# Function to plot gender diversity by "branche"
+```{r}
+diversity_branche <- function(df, branchen_code) {
+  df_counts <- df %>%
+    filter(branchen_code == branchen_code) %>%
+  group_by(beginn_jahr, geschlecht) %>%
+  summarize(count = n())
+
+  # Calculate the total count for each year
+  df_totals <- df_counts %>%
+    group_by(beginn_jahr) %>%
+    summarize(total = sum(count))
+  
+  # Calculate the relative frequency of each gender for each year
+  df_freq <- df_counts %>%
+    left_join(df_totals, by = "beginn_jahr") %>%
+    mutate(freq = count / total)
+  
+  # Plot the results
+  ggplot(df_freq, aes(x = beginn_jahr, y = freq, color = geschlecht)) +
+    geom_line() +
+    scale_y_continuous(labels = scales::percent) +
+    labs(x = "Year", y = "Relative Frequency", color = "Gender")
+  ggsave(paste("Plots/diversity_", branchen_code, ".png", sep = ""),
+         width = 12, height = 9)
+}
+```
+
+```{r}
+# Create Branchen Plots
+branchen_codes <- unique(firmen$branchen_code)
+for (branchen_code in branchen_codes) {
+  diversity_branche(relationen_vorstand_adv, branchen_code)
+}
 ```
 
