@@ -130,7 +130,7 @@ relationen_person_firma_hist_fuehrung <- relationen_person_firma_hist %>%
                          "Geschaeftsfuehrer", "Gruender", "Inhaber", "Kommanditist",
                          "Partner"))
 
-relationen_fuehrung <- merge(x = personen, 
+relationen_fuehrung_hist <- merge(x = personen, 
                                    y = relationen_person_firma_hist_fuehrung, 
                                    by = "pers_id", 
                                    all.x = FALSE, 
@@ -138,6 +138,25 @@ relationen_fuehrung <- merge(x = personen,
   filter(geschlecht %in% c("m", "f"), beginn_jahr <= 2022)
 
 relationen_fuehrung_adv <- merge(x = firmen, 
+                                   y = relationen_fuehrung_hist, 
+                                   by = "firm_id", 
+                                   all.x = FALSE, 
+                                   all.y = TRUE)
+
+
+relationen_person_firma_fuehrung <- relationen_person_firma %>%
+  filter(funktion %in% c("Vorstandsvorsitzender", "Vorstand", "Direktor",
+                         "Geschaeftsfuehrer", "Gruender", "Inhaber", "Kommanditist",
+                         "Partner"))
+
+relationen_fuehrung <- merge(x = personen, 
+                                   y = relationen_person_firma_fuehrung, 
+                                   by = "pers_id", 
+                                   all.x = FALSE, 
+                                   all.y = TRUE) %>%
+  filter(geschlecht %in% c("m", "f"))
+
+relationen_fuehrung_adv_stat <- merge(x = firmen, 
                                    y = relationen_fuehrung, 
                                    by = "firm_id", 
                                    all.x = FALSE, 
@@ -204,5 +223,21 @@ branchen_codes <- unique(firmen$branchen_code)
 for (branchen_code in branchen_codes) {
   diversity_branche(relationen_fuehrung_adv, branchen_code)
 }
+```
+
+```{r}
+ggplot(data = relationen_vorstand_adv, aes(y = beginn_jahr)) +
+  geom_histogram() +
+  coord_flip()
+
+ggplot(data = relationen_vorstand_adv, aes(y = ende_jahr)) +
+  geom_histogram() +
+  coord_flip()
+
+```
+
+#  Analyse Diversität Firma nach PLZ
+```{r}
+relationen_fuehrung_adv_stat
 ```
 
