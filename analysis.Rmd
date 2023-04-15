@@ -135,6 +135,12 @@ relationen_vorstand <- merge(x = personen,
                                    all.y = TRUE) %>%
   filter(geschlecht %in% c("m", "f"), beginn_jahr <= 2022)
 
+relationen_vorstand_adv <- merge(x = firmen, 
+                                   y = relationen_vorstand, 
+                                   by = "firm_id", 
+                                   all.x = FALSE, 
+                                   all.y = TRUE)
+
 
 # Group data by year and gender, and count the number of occurrences
 df_counts <- relationen_vorstand %>%
@@ -157,33 +163,16 @@ ggplot(df_freq, aes(x = beginn_jahr, y = freq, color = geschlecht)) +
   scale_y_continuous(labels = scales::percent) +
   labs(x = "Year", y = "Relative Frequency", color = "Gender")
 
-
-
-
-
-relationen_vorstand %>% group_by(beginn_jahr, geschlecht) %>%
-  summarize(n_ges = n()) %>% 
-  mutate(anteil_ges = n / sum(n_ges))
-  
-  
-ggplot(data = personen_relationen_hist_vorstand, 
-       mapping = aes(x = beginn_jahr, y = ))
-
-
-relationen_vorstand_adv <- merge(x = firmen, 
-                                   y = relationen_vorstand, 
-                                   by = "firm_id", 
-                                   all.x = FALSE, 
-                                   all.y = TRUE)
-
 # average age in boards over time
 ```
 
 # Function to plot gender diversity by "branche"
 ```{r}
-diversity_branche <- function(df, branchen_code) {
+diversity_branche <- function(df, branche) {
+  df <- df %>%
+    filter(branchen_code == !!branche)
+  
   df_counts <- df %>%
-    filter(branchen_code == branchen_code) %>%
   group_by(beginn_jahr, geschlecht) %>%
   summarize(count = n())
 
@@ -202,7 +191,7 @@ diversity_branche <- function(df, branchen_code) {
     geom_line() +
     scale_y_continuous(labels = scales::percent) +
     labs(x = "Year", y = "Relative Frequency", color = "Gender")
-  ggsave(paste("Plots/diversity_", branchen_code, ".png", sep = ""),
+  ggsave(paste("Plots/diversity_", branche, ".png", sep = ""),
          width = 12, height = 9)
 }
 ```
@@ -212,6 +201,6 @@ diversity_branche <- function(df, branchen_code) {
 branchen_codes <- unique(firmen$branchen_code)
 for (branchen_code in branchen_codes) {
   diversity_branche(relationen_vorstand_adv, branchen_code)
-}
+}apply(array, margin, ...)
 ```
 
