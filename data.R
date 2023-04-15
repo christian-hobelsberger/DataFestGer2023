@@ -31,7 +31,7 @@ relation_person_firma <- readr::read_delim("data/protected_data/relationen_perso
 plz_einwohner <- readr::read_csv("data/plz_einwohner.csv")
 
 extract_wz_code <- function(x) {
-  lapply(x, \(code) {
+  lapply(x, function(code) {
     stringr::str_extract_all(code, "\\d+") %>%
       `[[`(1) %>%
       as.numeric() %>%
@@ -63,11 +63,6 @@ branche_name <- c(
 )
 
 firmen <- firmen %>%
-  select(-c(
-    "amtsgericht_plz", "amtsgericht_ort", "hr_nummer",
-    "hr_nummer_alle", "hr_nummer_info", "gegenstand",
-    "pubid_arr", "pdf_id_arr", "wz_code_text"
-  )) %>%
   mutate(
     branche_code = extract_wz_code(wz_code),
     branche_code = case_when(
@@ -90,9 +85,35 @@ firmen <- firmen %>%
       branche_code < 99 ~ "T",
       branche_code == 99 ~ "U"
     ),
-    branche_name = lapply(branche_code, \(x) branche_name[x]),
+    branche_name = lapply(branche_code, function(x) branche_name[x]),
     mitarbeiter_year = stringr::str_extract(mitarbeiter_staffel, "\\d{4}"),
     mitarbeiter_range = stringr::str_extract(mitarbeiter_staffel, "\\d+-\\d+"),
     umsatz_year = stringr::str_extract(umsatz_staffel, "\\d{4}"),
     umsatz_range = stringr::str_extract(umsatz_staffel, "\\d+-\\d+")
-)
+  )
+
+person_firma <- relation_person_firma %>%
+  inner_join(firmen %>% rename(firmen_ort = ort), by = "firm_id") %>%
+  inner_join(person %>% rename(person_ort = ort), by = "pers_id") %>%
+  filter(funktion %in% c(
+    "Vorstandsvorsitzender", "Vorstand", "Direktor",
+    "Geschaeftsfuehrer", "Gruender", "Inhaber", "Kommanditist",
+    "Partner"
+  ))
+
+person_firma <- person_firma %>%
+  mutate(alter = 2023 - jahr) %>%
+  filter(alter >= 0, alter <= 100) %>%
+  group_by(firm_id, pers_id) %>%
+  slice(1) %>%
+  ungroup() %>%
+  mutate(
+    diversity_alter = min(c(max(alter) - min(alter)) / 50, 1),
+    diversity_geschlecht = 1 - 2 * abs(0.5 - mean(geschlecht == "m")),
+    diversity_score = diversity_alter + diversity_geschlecht
+  ) %>%
+  arrange(diversity_score) %>%
+  filter(mitarbeiter_range %in% c("51-500", "501-5000", "5001-50000")) %>%
+  group_by(firm_id) %>%
+  filter(n() >= 2) %>% 
+  ungroup()
