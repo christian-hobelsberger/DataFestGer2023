@@ -22,6 +22,8 @@ firmen_hist <- read_delim(file = "data/protected_data/firmen_hist.csv", col_name
 relationen_person_firma <- read_delim(file = "data/protected_data/relationen_person_firma.csv", col_names = TRUE)
 relationen_person_firma_hist <- read_delim(file = "data/protected_data/relationen_person_firma_hist.csv", col_names = TRUE)
 relationen_firma_firma <- read_delim(file = "data/protected_data/relationen_firma_firma.csv", col_names = TRUE)
+
+plz_einwohner <- read_csv("data/plz_einwohner.csv")
 head(personen)
 head(relationen_person_firma)
 
@@ -239,6 +241,8 @@ relationen_fuehrung_adv_stat <- merge(x = firmen,
                                    all.x = FALSE, 
                                    all.y = TRUE)
 
+relationen_fuehrung_adv_stat <- left_join(relationen_fuehrung_adv_stat, plz_einwohner, "plz")
+
 
 # Group data by year and gender, and count the number of occurrences
 df_counts <- relationen_vorstand %>%
@@ -355,9 +359,17 @@ firmen_diversität <- relationen_fuehrung_adv_stat_div %>% arrange((diversity_sc
   filter(n() >= 2) %>% 
   slice(1)
 
+firmen_diversität <- firmen_diversität %>%
+  group_by(ort.x) %>%
+  mutate(einwohner_ort = sum(einwohner))
+
+firmen_diversität <- firmen_diversität %>%
+  mutate(is_city = (einwohner_ort >= 5000))
+
 firmen_diversität %>%
-  group_by(mitarbeiter_range) %>%
-  summarise(mean(diversity_score))
+  group_by(ort.x, is_city) %>%
+  summarise(mean_diversity_score = mean(diversity_score)) %>%
+  arrange((mean_diversity_score)) %>% view()
 
 ggplot(data = firmen_diversität, mapping = aes(x = mitarbeiter_range, diversity_score)) +
   geom_()
