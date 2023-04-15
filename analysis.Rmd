@@ -9,7 +9,6 @@ library(tidyverse)
 library(lubridate)
 ```
 
-
 ## First exploratory data 
 ```{r}
 
@@ -27,6 +26,35 @@ head(personen)
 head(relationen_person_firma)
 
 # Adjust data types
+
+
+# Adjust "branche"
+firmen$branche <- gsub(firmen$wz_code, replacement = "", pattern = "\\{|\\}")
+firmen$branche <- strsplit(firmen$branche, ",")
+firmen$branche <- lapply(firmen$branche, as.numeric)
+firmen$branche <- lapply(firmen$branche, min)
+firmen$branche <- substr(firmen$branche,1,2)
+firmen <- firmen %>% mutate(branche = as.numeric(branche)) %>% 
+  mutate(branchen_code = case_when(branche < 05 ~ "A", 
+                                   branche < 10 ~ "B", 
+                                   branche < 35 ~ "C", 
+                                   branche < 45 ~ "E", 
+                                   branche < 49 ~ "G", 
+                                   branche < 55 ~ "H", 
+                                   branche < 58 ~ "I", 
+                                   branche < 64 ~ "J",
+                                   branche < 68 ~ "K", 
+                                   branche < 69 ~ "L", 
+                                   branche < 77 ~ "M", 
+                                   branche < 84 ~ "N", 
+                                   branche < 85 ~ "O", 
+                                   branche < 86 ~ "P", 
+                                   branche < 90 ~ "Q", 
+                                   branche < 97 ~ "R", 
+                                   branche < 99 ~ "T", 
+                                   branche == 99 ~ "U"))
+
+
 
 # Definieren der URL und Parameter für die OpenStreetMap-API
 url <- "https://nominatim.openstreetmap.org/search"
@@ -108,7 +136,6 @@ relationen_vorstand <- merge(x = personen,
   filter(geschlecht %in% c("m", "f"), beginn_jahr <= 2022)
 
 
-
 # Group data by year and gender, and count the number of occurrences
 df_counts <- relationen_vorstand %>%
   group_by(beginn_jahr, geschlecht) %>%
@@ -143,18 +170,49 @@ ggplot(data = personen_relationen_hist_vorstand,
        mapping = aes(x = beginn_jahr, y = ))
 
 
-setDT(personen_hist)
-setDT(relationen_person_firma_hist)
-
-personen_relationen_hist <- personen_hist[relationen_person_firma_hist, on = "pers_id", allow.cartesian = TRUE]
-
-
-personen_relationen_hist <- merge(x = personen_hist, relationen_person_firma_hist, by = "pers_id")
-personen_relationen_hist %>%
-  group_by(geschlecht, funktion) %>%
-  count(funktion, name = "funktion_abs_haeufigkeiten") %>%
-  filter(funktion %in% c("Geschaeftsfuehrer"))
+relationen_vorstand_adv <- merge(x = firmen, 
+                                   y = relationen_vorstand, 
+                                   by = "firm_id", 
+                                   all.x = FALSE, 
+                                   all.y = TRUE)
 
 # average age in boards over time
+```
+
+# Function to plot gender diversity by "branche"
+```{r}
+diversity_branche <- function(df, branchen_code) {
+  df_counts <- df %>%
+    filter(branchen_code == branchen_code) %>%
+  group_by(beginn_jahr, geschlecht) %>%
+  summarize(count = n())
+
+  # Calculate the total count for each year
+  df_totals <- df_counts %>%
+    group_by(beginn_jahr) %>%
+    summarize(total = sum(count))
+  
+  # Calculate the relative frequency of each gender for each year
+  df_freq <- df_counts %>%
+    left_join(df_totals, by = "beginn_jahr") %>%
+    mutate(freq = count / total)
+  
+  # Plot the results
+  ggplot(df_freq, aes(x = beginn_jahr, y = freq, color = geschlecht)) +
+    geom_line() +
+    scale_y_continuous(labels = scales::percent) +
+    labs(x = "Year", y = "Relative Frequency", color = "Gender")
+  ggsave(paste("Plots/diversity_", branchen_code, ".png", sep = ""),
+         width = 12, height = 9)
+}
+```
+
+```{r}
+# Create Branchen Plots
+branchen_codes <- unique(firmen$branchen_code)
+for (branchen_code in branchen_codes) {
+  diversity_branche(relationen_vorstand_adv, branchen_code)
+}
+
 ```
 
