@@ -374,8 +374,59 @@ firmen_diversität %>%
 ggplot(data = person_firma, mapping = aes(x = mitarbeiter_range, diversity_score)) +
   geom_()
 
-branche_diversität <- firmen_diversität %>%
-  group_by(branchen_code) %>%
-  summarise(avg_diversity_score = mean(diversity_score)) 
+firma_score %>%
+  group_by(mitarbeiter_range) %>%
+  summarise(avg_diversity_score = round(mean(diversity_score), 2)) 
 ```
+
+```{r}
+df_avg <- aggregate(diversity_score ~ branche_name, data = firma_score, FUN = mean)
+df_avg <- df_avg %>% filter(branche_name %in% c(
+    "Gesundheits- und Sozialwesen",
+    "Erziehung und Unterricht",
+    "Verarbeitendes Gewerbe",
+    "Information und Kommunikation"
+  ))
+df_avg$branche_name <- c("Health and social care", 
+                         "Education and teaching", 
+                         "Manufacturing industry", 
+                         "Information and communication")
+
+
+
+# Erstelle den Barchart
+ggplot(
+  df_avg, 
+  aes(x = branche_name, y = diversity_score)) +
+  geom_bar(stat = "identity", fill = "orchid4") +
+  labs(x = "Industry", y = "Cherry Score") +
+  coord_flip() +
+  theme(axis.title.y = element_text(margin = margin(r = 100))) +
+  theme_bw()
+
+df_avg_m <- aggregate(diversity_score ~ mitarbeiter_range, data = firma_score, FUN = mean)
+
+df_avg_m <- df_avg_m[c(1, 6, 2, 5, 4, 3),]
+
+df_avg_m <- data.frame(row.names = NULL, df_avg_m)
+
+df_avg_m$mitarbeiter_range <- factor(df_avg_m$mitarbeiter_range,
+                                     levels = c("5001-50000", "501-5000", "51-500", 
+                                     "25-50", "6-24", "0-5"))
+
+# Erstelle den Barchart
+ggplot(
+  df_avg_m, 
+  aes(x = mitarbeiter_range, y = diversity_score)) +
+  geom_bar(stat = "identity", fill = "orchid4") +
+  labs(x = "Company size", y = "Cherry Score") +
+  coord_flip() +
+  theme(axis.title.y = element_text(margin = margin(r = 100))) +
+  theme_bw()
+
+
+ggplot(df_avg_m, aes(x = mitarbeiter_range, y = diversity_score)) +
+  geom_bar(stat = "identity", fill = "steelblue")
+```
+
 
