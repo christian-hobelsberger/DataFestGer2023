@@ -99,10 +99,11 @@ person_firma <- relation_person_firma %>%
   filter(
     geschlecht %in% c("m", "f"),
     funktion %in% c(
-    "Vorstandsvorsitzender", "Vorstand", "Direktor",
-    "Geschaeftsfuehrer", "Gruender", "Inhaber", "Kommanditist",
-    "Partner"
-  ))
+      "Vorstandsvorsitzender", "Vorstand", "Direktor",
+      "Geschaeftsfuehrer", "Gruender", "Inhaber", "Kommanditist",
+      "Partner"
+    )
+  )
 
 firma_score <- person_firma %>%
   mutate(alter = 2023 - jahr) %>%
@@ -110,7 +111,7 @@ firma_score <- person_firma %>%
   group_by(firm_id, pers_id) %>%
   slice(1) %>%
   ungroup() %>%
-  group_by(firm_id) %>% 
+  group_by(firm_id) %>%
   mutate(
     diversity_alter = min(c(max(alter) - min(alter)) / 50, 1),
     diversity_geschlecht = 1 - 2 * abs(0.5 - mean(geschlecht == "m")),
@@ -120,3 +121,34 @@ firma_score <- person_firma %>%
   filter(n() >= 2) %>%
   slice(1) %>%
   ungroup()
+
+getmode <- function(x) {
+  x <- as.character(x)
+  x <- x[!is.na(x)]
+  uniqv <- unique(x)
+  uniqv[which.max(tabulate(match(x, uniqv)))]
+}
+
+top_10 <- firma_score %>%
+  group_by(rechtsform) %>%
+  summarise(score = mean(diversity_score), mitarbeiter = getmode(mitarbeiter_range), n = n()) %>%
+  filter(n > 10) %>%
+  arrange(desc(score))
+
+top_score <- firma_score %>%
+  mutate(
+    mitarbeiter_range = factor(mitarbeiter_range,
+      levels = c("0-5", "6-24", "51-500", "501-5000", "5001-50000"),
+      ordered = TRUE
+    )
+  ) %>%
+  filter(mitarbeiter_range >= "501-5000") %>%
+  arrange(desc(diversity_score), desc(mitarbeiter_range)) %>%
+  select(firm_id, firmenname, diversity_score, mitarbeiter_range, firmen_ort)
+
+firm_ids <- c(
+  3655680, 3701373, 3624513, 3229975, 2930857, 900859, 1262299, 2629799
+)
+firm_highlight <- firma_score %>%
+  filter(firm_id %in% firm_ids) %>%
+  select(firmenname, diversity_score)
