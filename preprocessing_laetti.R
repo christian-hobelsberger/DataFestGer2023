@@ -1,3 +1,5 @@
+library(readr)
+
 personen <- read_delim("data/protected_data/personen.csv", 
                        delim = ";", escape_double = FALSE, trim_ws = TRUE)
 firmen <- read_delim("data/protected_data/firmen.csv", 
@@ -46,3 +48,5 @@ firmen$ma <- gsub(firmen$ma,  replacement = "", pattern = "\"")
 firmen$year_ma <- strsplit(firmen$ma,  "=>")
 firmen$ma_range <- lapply(firmen$year_ma, tail, n = 1L)
 firmen$year_ma <- lapply(firmen$year_ma, head, n = 1L)
+
+relationen_person_firma
